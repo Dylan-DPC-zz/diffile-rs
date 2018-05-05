@@ -1,7 +1,7 @@
 use file_handler::LineAwareFile;
-use std::fmt::Debug;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug)]
 pub struct Differenciator {
     left: LineAwareFile,
     right: LineAwareFile,
@@ -12,29 +12,36 @@ impl Differenciator {
         Differenciator { left, right }
     }
 
-    pub fn diff(self) -> Changes {
-        let left = self.left;
-        let right = self.right;
+    pub fn diff(&self) -> Changes {
 
-        let additions = LineAwareFile::new();
-        let deletions = LineAwareFile::new();
+        let additions= self.filter_changed_values(Direction::LeftToRight);
+        let deletions= self.filter_changed_values(Direction::RightToLeft);
 
-        let changed_rows: HashMap<usize, String> = right.contents.into_iter()
-            .filter(|&(ref right_index, ref row) | {
-                let left_value = left.contents.get(&right_index);
-                match left_value {
+        Changes::new(additions, deletions)
+    }
+
+    fn filter_changed_values(&self, direction: Direction) -> LineAwareFile {
+        let (subject, object) = match direction {
+            Direction::LeftToRight => (&self.left,&self.right),
+            Direction::RightToLeft => (&self.right, &self.left)
+        };
+
+        let values: HashMap<usize, String> = object.clone().contents.into_iter()
+            .filter(|&(ref index, ref row) | {
+                let value = subject.contents.get(&index);
+                match value {
                     Some(val) if *val == *row => false,
                     _ => true
                 }
             })
-        .collect();
+            .collect();
 
-        Changes::new(additions, deletions)
+        LineAwareFile::from(values.clone())
     }
 }
 
 #[derive(Clone, Debug)]
-struct Changes {
+pub struct Changes {
     additions: LineAwareFile,
     deletions: LineAwareFile,
 }
@@ -45,12 +52,20 @@ impl Changes {
     }
 }
 
+enum Direction {
+    LeftToRight,
+    RightToLeft
+}
+
 #[test]
 pub fn test_diff() {
     use std::collections::HashMap;
-    let left_contents: HashMap<usize, String> = [(1, "foo".to_string())].iter().cloned().collect();
+    let left_contents: HashMap<usize, String> = [(1, "foo".to_string()), (2, "baz".to_string())].iter().cloned().collect();
     let right_contents: HashMap<usize, String> = [(1, "foo".to_string()), (2,"bar".to_string())].iter().cloned().collect();
     let differenciator = Differenciator { left: LineAwareFile::from(left_contents), right: LineAwareFile::from(right_contents)};
     let diff = differenciator.diff();
-
+    let expected_additions: HashMap<usize, String> = [(2, "bar".to_string())].iter().cloned().collect();
+    let expected_deletions: HashMap<usize, String> = [(2, "baz".to_string())].iter().cloned().collect();
+    assert_eq!(diff.additions.contents, expected_additions);
+    assert_eq!(diff.deletions.contents, expected_deletions);
 }

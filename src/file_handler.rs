@@ -24,7 +24,7 @@ impl File {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LineAwareFile {
     pub contents: HashMap<usize, String>
 }

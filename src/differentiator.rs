@@ -2,14 +2,14 @@ use file_handler::LineAwareFile;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
-pub struct Differenciator {
-    left: LineAwareFile,
-    right: LineAwareFile,
+pub struct Differ<'a> {
+    left: &'a LineAwareFile,
+    right: &'a LineAwareFile,
 }
 
-impl Differenciator {
-    pub fn new(left: LineAwareFile, right: LineAwareFile) -> Differenciator {
-        Differenciator { left, right }
+impl<'a> Differ<'a> {
+    pub fn new(left: &'a LineAwareFile, right: &'a LineAwareFile) -> Differ<'a> {
+        Differ { left, right }
     }
 
     pub fn diff(&self) -> Changes {
@@ -22,8 +22,8 @@ impl Differenciator {
 
     fn filter_changed_values(&self, direction: Direction) -> LineAwareFile {
         let (subject, object) = match direction {
-            Direction::LeftToRight => (&self.left,&self.right),
-            Direction::RightToLeft => (&self.right, &self.left)
+            Direction::LeftToRight => (self.left,self.right),
+            Direction::RightToLeft => (self.right, self.left)
         };
 
         let values: HashMap<usize, String> = object.clone().contents.into_iter()
@@ -62,7 +62,7 @@ pub fn test_diff() {
     use std::collections::HashMap;
     let left_contents: HashMap<usize, String> = [(1, "foo".to_string()), (2, "baz".to_string())].iter().cloned().collect();
     let right_contents: HashMap<usize, String> = [(1, "foo".to_string()), (2,"bar".to_string())].iter().cloned().collect();
-    let differenciator = Differenciator { left: LineAwareFile::from(left_contents), right: LineAwareFile::from(right_contents)};
+    let differenciator = Differ { left: &LineAwareFile::from(left_contents), right: &LineAwareFile::from(right_contents)};
     let diff = differenciator.diff();
     let expected_additions: HashMap<usize, String> = [(2, "bar".to_string())].iter().cloned().collect();
     let expected_deletions: HashMap<usize, String> = [(2, "baz".to_string())].iter().cloned().collect();

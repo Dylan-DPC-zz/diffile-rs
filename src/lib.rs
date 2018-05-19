@@ -10,17 +10,17 @@ use std::error::Error;
 use std::fmt::{Display, Result as FmtResult, Formatter};
 
 pub struct Diffile {
-    path: PathBuf,
+    file: File,
     contents: Vec<LineAwareFile>
 }
 
 impl Diffile {
-    pub fn new(path: PathBuf) -> Diffile {
-        Diffile { path, contents: vec![] }
+    pub fn new(path: &PathBuf) -> Diffile {
+        Diffile { file: File::new(path), contents: vec![] }
     }
 
     pub fn step(mut self) -> Diffile {
-        self.contents.push(File::new(&self.path).read().unwrap());
+        self.contents.push(self.file.read().unwrap());
 
         self
     }
@@ -32,6 +32,11 @@ impl Diffile {
             len if len < 2 => Err(DiffError),
             _ => Ok(Differ::new(self.contents.get(length - 2).unwrap(), self.contents.last().unwrap()).diff())
         }
+    }
+
+    pub fn rollback(&self) {
+        self.file.apply_changes(self.contents.last().unwrap())
+        self.file.write(self.contents.last().unwrap())
     }
 }
 
@@ -59,6 +64,6 @@ pub fn test_revision_a_file() {
     let first_edition = LineAwareFile::from(contents);
     let contents: HashMap<usize, String> = [(1, "foo".to_string()), (2, "baz".to_string())].iter().cloned().collect();
     let second_edition = LineAwareFile::from(contents);
-    let changes = Diffile { path: PathBuf::from("_"), contents: vec![first_edition, second_edition] }.diff();
+    let changes = Diffile { file: File::new(&PathBuf::from("_")), contents: vec![first_edition, second_edition] }.diff();
     println!("{:?}", changes);
 }

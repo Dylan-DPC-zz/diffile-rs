@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{BufReader, Read, Error};
+use std::io::{BufReader, Read, Error, Result as IOResult};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::collections::HashMap;
@@ -22,6 +22,15 @@ impl File {
         buf_reader.read_to_string(&mut contents)?;
         LineAwareFile::from_str(contents.as_str())
     }
+
+    pub fn write(self, contents: LineAwareFile) -> IOResult<()> {
+        let payload: String = contents.into();
+        fs::write(self.path, payload)
+    }
+
+    pub fn apply_changes(&self, changes: Changes) -> LineAwareFile {
+
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -32,6 +41,13 @@ pub struct LineAwareFile {
 impl LineAwareFile {
     pub fn new() -> LineAwareFile {
         LineAwareFile { contents: HashMap::new() }
+    }
+}
+
+impl Into<String> for LineAwareFile {
+    fn into(self) -> String {
+        let contents: Vec<String> = self.contents.values().map(|content| content.to_owned()).collect();
+        contents.join("\n")
     }
 }
 
@@ -67,4 +83,11 @@ pub fn test_read_file() {
     let file = File::new(&PathBuf::from("tests/foo"));
     let output = file.read();
     println!("{:?}", output.unwrap().contents);
+}
+
+#[test]
+pub fn test_write_file() {
+    let file = File::new(&PathBuf::from("tests/bar"));
+    let contents = LineAwareFile::from(vec!["foo".to_string(), "bar".to_string()]);
+    let output = file.write(contents);
 }
